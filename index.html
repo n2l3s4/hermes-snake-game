@@ -150,6 +150,25 @@
             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
         
+        .sound-toggle {
+            background: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5em;
+            cursor: pointer;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        
+        .sound-toggle:active {
+            transform: scale(0.9);
+        }
+        
         @media (max-width: 500px) {
             h1 { font-size: 1.8em; }
             .controls {
@@ -164,6 +183,8 @@
     </style>
 </head>
 <body>
+    <button class="sound-toggle" onclick="toggleSound()" id="soundBtn">🔊</button>
+    
     <h1>🐍 Snake Game!</h1>
     
     <div class="score-board">
@@ -212,6 +233,71 @@
         
         // Rainbow colors for snake
         const snakeColors = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'];
+        
+        // Sound effects using Web Audio API
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let soundEnabled = true;
+        
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
+        }
+        
+        function playSound(type) {
+            if (!soundEnabled) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            switch(type) {
+                case 'eat':
+                    // Happy "crunch" sound
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.15);
+                    break;
+                    
+                case 'gameover':
+                    // Sad descending sound
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.5);
+                    break;
+                    
+                case 'start':
+                    // Happy rising sound
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    oscillator.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.3);
+                    break;
+                    
+                case 'move':
+                    // Soft click sound
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+                    gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.05);
+                    break;
+            }
+        }
         
         function init() {
             snake = [
@@ -324,6 +410,7 @@
             if (head.x === food.x && head.y === food.y) {
                 score += 10;
                 scoreElement.textContent = score;
+                playSound('eat');
                 placeFood();
             } else {
                 snake.pop();
@@ -357,6 +444,7 @@
         function startGame() {
             gameOverScreen.style.display = 'none';
             gameRunning = true;
+            playSound('start');
             init();
             if (gameLoop) clearInterval(gameLoop);
             gameLoop = setInterval(update, 150); // Slower for kids
@@ -366,6 +454,7 @@
         function gameOver() {
             gameRunning = false;
             clearInterval(gameLoop);
+            playSound('gameover');
             finalScoreElement.textContent = score;
             gameOverScreen.style.display = 'block';
         }
